@@ -245,7 +245,6 @@ export default class HostManager {
           </div>
       `;
 
-      document.getElementById('presenter-answers-count').textContent = "0 Answers";
       document.getElementById('presenter-next-btn').classList.add('hidden');
 
       // Update Firebase State

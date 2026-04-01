@@ -1,7 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc, onSnapshot, query, where, orderBy, limit, serverTimestamp, collectionGroup } from "firebase/firestore";
 import { firebaseConfig } from "./firebase-config.js";
-// import { mockQuestions } from "./MockData.js"; // Removed
 
 export default class FirestoreService {
   constructor() {
@@ -88,7 +87,7 @@ export default class FirestoreService {
     }
   }
 
-  async submitScore(quizId, player) {
+  async submitScore(quizId, player, correctCount = 0, totalQuestions = 0) {
     if (!this.isInitialized) return;
 
     try {
@@ -96,9 +95,9 @@ export default class FirestoreService {
         quizId: quizId,
         username: player.username,
         score: player.score,
-        time: player.totalTimeTaken || 0, // Save time taken
-        subject: player.subject || "General",
-        grade: player.grade || "Any",     
+        correctCount: correctCount,
+        totalQuestions: totalQuestions,
+        time: player.totalTimeTaken || 0,
         timestamp: serverTimestamp()
       });
       console.log(`Score submitted for Quiz ${quizId}`);

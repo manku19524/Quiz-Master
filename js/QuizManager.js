@@ -9,15 +9,9 @@ export default class QuizManager {
     this.quizQuestions = [];
     this.currentQuestionIndex = -1;
     this.analytics = new Analytics();
-    this.db = new FirestoreService(); // Data Service
-    this.currentQuizId = null; // Track active quiz ID
-    this.currentQuestionIndex = -1; // Initialize to -1 to ensure state change triggers render
+    this.db = new FirestoreService();
+    this.currentQuizId = null;
 
-    // Timer
-    this.timerInterval = null;
-    this.timeLeft = 600; // 10 minutes (600s) default
-
-    // DOM Elements
     // DOM Elements
     this.views = {
       landing: document.getElementById('landing-view'),
@@ -33,16 +27,11 @@ export default class QuizManager {
 
     this.ui = {
       questionContainer: document.getElementById('question-container'),
-      timeDisplay: document.getElementById('time-display'),
       currentQNum: document.getElementById('q-current'),
       totalQNum: document.getElementById('q-total'),
-      finalScore: document.getElementById('final-score'),
-      totalScore: document.getElementById('total-score'),
       restartBtn: document.getElementById('restart-btn'),
-      viewLeaderboardBtn: document.getElementById('view-leaderboard-btn'),
       backHomeBtn: document.getElementById('back-home-btn'),
       leaderboardList: document.getElementById('leaderboard-list'),
-      navLeaderboard: document.getElementById('nav-leaderboard'),
       studentResultCard: document.getElementById('student-result-card'),
       studentResultTitle: document.getElementById('student-result-title'),
       studentResultPoints: document.getElementById('student-result-points'),
@@ -63,8 +52,6 @@ export default class QuizManager {
     // Navigation
     if (this.ui.restartBtn) this.ui.restartBtn.addEventListener('click', () => location.reload());
     if (this.ui.backHomeBtn) this.ui.backHomeBtn.addEventListener('click', () => location.reload());
-    if (this.ui.viewLeaderboardBtn) this.ui.viewLeaderboardBtn.addEventListener('click', () => this.showLeaderboard());
-    if (this.ui.navLeaderboard) this.ui.navLeaderboard.addEventListener('click', () => this.showLeaderboard());
 
     // Host final leaderboard trigger
     window.addEventListener('showFinalLeaderboard', async (e) => {
@@ -156,21 +143,16 @@ export default class QuizManager {
     this.ui.leaderboardList.innerHTML = data.map((entry, index) => `
       <div class="leaderboard-row">
         <span class="rank">#${index + 1}</span>
-        <div class="player-info">
+        <div class="player-info" style="flex: 1; margin-left: 1rem;">
           <strong>${entry.username}</strong>
-          <br><small>${entry.subject || "General"} • ${entry.grade || "Any"}</small>
         </div>
-        <div class="player-score">
-          ${entry.score} pts
-          <br><small style="font-size:0.7em; color:hsl(220, 10%, 70%)">${(entry.time || 0).toFixed(1)}s</small>
+        <div class="player-score" style="text-align: right; display: flex; gap: 1.5rem; align-items: center;">
+          <span>${entry.correctCount || 0}/${entry.totalQuestions || '?'}</span>
+          <span style="color: hsl(var(--primary))">${(entry.time || 0).toFixed(1)}s</span>
         </div>
       </div>
     `).join('');
   }
-
-  // startQuiz and timer methods are no longer used by the student view directly 
-  // since the host controls the stream. However we can keep startTimer stub for reference 
-  // if we wanted local timers in the future, but we remove them for now to avoid confusion.
 
   switchView(viewName) {
     Object.values(this.views).forEach(el => {
@@ -302,18 +284,18 @@ export default class QuizManager {
   async endQuiz() {
     this.switchView('result');
 
-    // Submit Final Score
-    if (this.currentQuizId) {
-      await this.db.submitScore(this.currentQuizId, this.currentPlayer);
-    }
-
-    const nameEl = document.getElementById('final-result-name');
-    if (nameEl) nameEl.textContent = this.currentPlayer.username;
-    
     // Calculate Marks & Time
     const correctCount = this.currentPlayer.answers.filter(a => a.isCorrect).length;
     const totalQuestions = this.quizQuestions.length;
     const totalTime = this.currentPlayer.answers.reduce((sum, a) => sum + a.timeSpent, 0);
+
+    // Submit Final Score (with correctCount/totalQuestions for leaderboard)
+    if (this.currentQuizId) {
+      await this.db.submitScore(this.currentQuizId, this.currentPlayer, correctCount, totalQuestions);
+    }
+
+    const nameEl = document.getElementById('final-result-name');
+    if (nameEl) nameEl.textContent = this.currentPlayer.username;
     
     const marksEl = document.getElementById('final-result-marks');
     if (marksEl) marksEl.textContent = `${correctCount} / ${totalQuestions}`;

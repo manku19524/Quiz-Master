@@ -735,16 +735,31 @@ select option {
 
 .presenter-footer {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     margin-top: 3rem;
     padding: 1.5rem;
 }
 
-#presenter-answers-count {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: hsl(var(--text-muted));
+/* Result & Leaderboard Cards */
+.result-card,
+.leaderboard-card {
+    background: hsl(var(--surface));
+    padding: 2.5rem 2rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+@media (max-width: 600px) {
+    .result-card,
+    .leaderboard-card {
+        padding: 2rem 1.2rem;
+        max-width: 100%;
+        border-radius: var(--radius-md);
+    }
 }
 
 /* Student Options View */
