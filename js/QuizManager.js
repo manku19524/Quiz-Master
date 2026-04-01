@@ -292,34 +292,38 @@ export default class QuizManager {
       }
   }
 
-  endQuiz() {
+  async endQuiz() {
     this.switchView('result');
-    this.ui.finalScore.textContent = this.currentPlayer.score;
 
     // Submit Final Score
     if (this.currentQuizId) {
-      this.db.submitScore(this.currentQuizId, this.currentPlayer);
+      await this.db.submitScore(this.currentQuizId, this.currentPlayer);
     }
 
-    const report = this.analytics.generateReport(this.currentPlayer.answers);
-    const container = document.getElementById('analytics-preview');
-
-    if (container) {
-      if (report.length > 0) {
-        container.innerHTML = `
-                    <h3>Areas for Improvement</h3>
-                    <div class="weak-areas-list">
-                        ${report.map(area => `
-                            <div class="weak-card">
-                                <strong>${area.topic}</strong>
-                                <span>${area.reason} (${area.reason === 'Concept Weakness' ? area.accuracy : area.avgTime})</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-      } else {
-        container.innerHTML = `<p style="margin-top:1rem; color:hsl(140,70%,60%)">Excellent performance across all topics!</p>`;
-      }
+    const nameEl = document.getElementById('final-result-name');
+    if (nameEl) nameEl.textContent = this.currentPlayer.username;
+    
+    // Calculate Marks & Time
+    const correctCount = this.currentPlayer.answers.filter(a => a.isCorrect).length;
+    const totalQuestions = this.quizQuestions.length;
+    const totalTime = this.currentPlayer.answers.reduce((sum, a) => sum + a.timeSpent, 0);
+    
+    const marksEl = document.getElementById('final-result-marks');
+    if (marksEl) marksEl.textContent = `${correctCount} / ${totalQuestions}`;
+    
+    const timeEl = document.getElementById('final-result-time');
+    if (timeEl) timeEl.textContent = `${totalTime.toFixed(1)}s`;
+    
+    // Fetch Rank
+    const rankEl = document.getElementById('final-result-rank');
+    if (rankEl) {
+        if (this.currentQuizId) {
+            const scores = await this.db.getLeaderboard(this.currentQuizId);
+            const myRankIndex = scores.findIndex(s => s.username === this.currentPlayer.username);
+            rankEl.textContent = myRankIndex !== -1 ? `#${myRankIndex + 1}` : "N/A";
+        } else {
+            rankEl.textContent = "N/A";
+        }
     }
   }
 }

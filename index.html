@@ -272,18 +272,27 @@
 
         <!-- 11. PLAYER Result View -->
         <section id="result-view" class="view hidden">
-          <div class="result-card">
-            <h2>Quiz Completed!</h2>
-            <div class="score-display">
-              <span id="final-score">0</span>
+          <div class="result-card" style="text-align: center;">
+            <h1 style="color: hsl(var(--primary)); margin-bottom: 0.5rem; font-size: 3rem;">Result</h1>
+            <h2 id="final-result-name" style="margin-top: 0; margin-bottom: 2rem; color: white;">Name</h2>
+            
+            <div style="display: flex; justify-content: space-around; background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: var(--radius-md);">
+               <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                  <div style="font-size: 0.9rem; color: hsl(var(--text-muted)); text-transform: uppercase; margin-bottom: 0.5rem;">Rank</div>
+                  <div id="final-result-rank" style="font-size: 2rem; font-weight: bold; color: hsl(var(--text-main));">...</div>
+               </div>
+               <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                  <div style="font-size: 0.9rem; color: hsl(var(--text-muted)); text-transform: uppercase; margin-bottom: 0.5rem;">Marks</div>
+                  <div id="final-result-marks" style="font-size: 2rem; font-weight: bold; color: hsl(var(--text-main));">0 / 0</div>
+               </div>
+               <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                  <div style="font-size: 0.9rem; color: hsl(var(--text-muted)); text-transform: uppercase; margin-bottom: 0.5rem;">Time</div>
+                  <div id="final-result-time" style="font-size: 2rem; font-weight: bold; color: hsl(var(--text-main));">0.0s</div>
+               </div>
             </div>
-            <p id="performance-msg">Great job!</p>
-            <div id="analytics-preview"></div>
-            <div class="action-buttons">
-              <button id="view-leaderboard-btn" class="btn-primary">
-                View Final Leaderboard
-              </button>
-              <button id="restart-btn" class="nav-btn">Go Home</button>
+
+            <div class="action-buttons" style="margin-top: 3rem;">
+              <button id="restart-btn" class="nav-btn" style="width: 100%;">Go Home</button>
             </div>
           </div>
         </section>
