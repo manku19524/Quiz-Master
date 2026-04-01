@@ -148,6 +148,12 @@ document.body.addEventListener('submit', async (e) => {
         
         const quizData = await db.getQuizById(quizId, password);
         
+        // Name validation against existing lobby
+        const nameExists = await db.checkPlayerExists(quizId, playerName);
+        if (nameExists) {
+            throw new Error(`The name "${playerName}" is already taken in this quiz. Please choose another.`);
+        }
+        
         console.log("Join Success:", quizData);
 
         // Save session

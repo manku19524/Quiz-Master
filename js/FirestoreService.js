@@ -308,6 +308,29 @@ export default class FirestoreService {
       return this.updateQuizStatus(quizId, stateObj.status, stateObj);
   }
 
+  async checkPlayerExists(quizId, username) {
+      if (!this.isInitialized) return false;
+      try {
+          const qRef = collection(this.db, "quizzes");
+          const q = query(qRef, where("quizId", "==", quizId));
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+              const quizDocRef = querySnapshot.docs[0].ref;
+              const playersRef = collection(quizDocRef, "players");
+              
+              const pq = query(playersRef, where("username", "==", username));
+              const pSnapshot = await getDocs(pq);
+              
+              return !pSnapshot.empty;
+          }
+          return false;
+      } catch (error) {
+          console.error("Error checking player:", error);
+          return false;
+      }
+  }
+
   async addPlayerToLobby(quizId, player) {
     if (!this.isInitialized) return;
     try {

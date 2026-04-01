@@ -146,6 +146,11 @@ select:focus {
   box-shadow: 0 0 0 3px hsla(var(--primary), 0.2);
 }
 
+select option {
+  background-color: hsl(var(--surface));
+  color: hsl(var(--text-main));
+}
+
 .btn-primary {
   background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-dark)));
   color: white;
@@ -181,6 +186,26 @@ select:focus {
   background: rgba(255, 255, 255, 0.15);
   border-color: hsla(var(--primary), 0.5);
   transform: translateY(-1px);
+}
+
+.back-btn {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: hsl(var(--text-main));
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.text-red {
+  color: #ff4d4d !important;
 }
 
 /* Utility */
@@ -656,6 +681,7 @@ select:focus {
     text-align: center;
     font-weight: 700;
     background: linear-gradient(to bottom, #fff, #ccc);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
