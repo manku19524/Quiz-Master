@@ -1,0 +1,17 @@
+# Sensitive data
+js/firebase-config.js
+
+# IDE/System files
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+
+# Dependencies
+node_modules/
+dist/
+build/
+
+# Local env files
+.env
+.env.*

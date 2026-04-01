@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A premium learning platform style quiz application for students."
+    />
+    <title>Quiz Master | Level Up Your Learning</title>
+
+    <!-- Fonts: Outfit for headings, Inter for body -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Import Map for Firebase -->
+    <script type="importmap">
+      {
+        "imports": {
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+          "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+        }
+      }
+    </script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+
+  <body>
+    <div id="app">
+      <!-- Application Views will be injected here -->
+      <header class="app-header">
+        <div class="logo">QuizMaster</div>
+        <nav>
+          <button id="nav-leaderboard" class="nav-btn">Leaderboard</button>
+        </nav>
+      </header>
+
+      <main id="main-content" class="container">
+        <!-- Dynamic Content -->
+        <!-- START: Dynamic Content -->
+
+        <!-- 1. LANDING Selection View -->
+        <section id="landing-view" class="view active">
+          <div class="welcome-card fade-in">
+            <h1>Quiz Master</h1>
+            <p>Are you a Teacher (Host) or a Student (Player)?</p>
+            <div class="role-selection">
+              <button id="btn-mode-host" class="btn-primary large-btn">
+                Host a Quiz
+              </button>
+              <button id="btn-mode-join" class="btn-secondary large-btn">
+                Join a Quiz
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. JOIN Quiz View (Student) -->
+        <section id="join-view" class="view hidden">
+          <div class="welcome-card slide-in">
+            <button class="back-btn small-text" data-target="landing-view">
+              ← Back
+            </button>
+            <h2>Join a Session</h2>
+            <form id="join-form">
+              <div class="input-group">
+                <label for="player-name">Your Name</label>
+                <input
+                  type="text"
+                  id="player-name"
+                  placeholder="John Doe"
+                  required
+                />
+              </div>
+              <div class="input-group">
+                <label for="quiz-id-input">Quiz ID</label>
+                <input
+                  type="text"
+                  id="quiz-id-input"
+                  placeholder="e.g. 4421"
+                  maxlength="4"
+                  pattern="\d{4}"
+                  required
+                />
+              </div>
+              <div class="input-group">
+                <label for="quiz-pass-input">Password</label>
+                <input
+                  type="password"
+                  id="quiz-pass-input"
+                  placeholder="Quiz Password"
+                  required
+                />
+              </div>
+              <button type="submit" class="btn-primary">Enter Quiz</button>
+              <p id="join-error" class="error-msg hidden">
+                Invalid ID or Password
+              </p>
+            </form>
+          </div>
+        </section>
+
+        <!-- 3. HOST Quiz View (Teacher) -->
+        <section id="host-view" class="view hidden">
+          <div class="host-container slide-in">
+            <header class="host-header">
+              <button class="back-btn" data-target="landing-view">
+                ← Cancel
+              </button>
+              <h2>Create New Quiz</h2>
+            </header>
+
+            <form id="create-quiz-form">
+              <div class="form-row">
+                <div class="input-group">
+                  <label>Quiz Title</label>
+                  <input
+                    type="text"
+                    id="new-quiz-title"
+                    placeholder="e.g. History Final"
+                    required
+                  />
+                </div>
+                <div class="input-group">
+                  <label>Set Password</label>
+                  <input
+                    type="text"
+                    id="new-quiz-pass"
+                    placeholder="Secret123"
+                    required
+                  />
+                </div>
+                <div class="input-group">
+                  <label>Per-Question Timer (Seconds)</label>
+                  <input
+                    type="number"
+                    id="new-quiz-timer"
+                    value="10"
+                    min="5"
+                    max="120"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div id="questions-list">
+                <!-- Dynamic Questions go here -->
+              </div>
+
+              <button
+                type="button"
+                id="add-question-btn"
+                class="btn-secondary dashed"
+              >
+                + Add Question
+              </button>
+
+              <div class="host-actions">
+                <button type="submit" class="btn-primary">Publish Quiz</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- 4. HOST LOBBY View (Teacher) -->
+        <section id="lobby-view" class="view hidden">
+          <div class="welcome-card fade-in">
+            <h2>Quiz Lobby</h2>
+            <div class="quiz-code-display">
+              <span class="label">JOIN CODE</span>
+              <span id="lobby-quiz-id" class="code">XXXX</span>
+            </div>
+            <p>Password: <strong id="lobby-quiz-pass">...</strong></p>
+
+            <div class="lobby-players">
+              <h3>Joined Players (<span id="lobby-player-count">0</span>)</h3>
+              <ul id="lobby-player-list">
+                <!-- Players injected here -->
+                <li class="waiting-text">Waiting for players...</li>
+              </ul>
+            </div>
+
+            <div class="action-buttons">
+              <button id="start-quiz-btn" class="btn-primary" disabled>Start Quiz</button>
+              <button id="lobby-home-btn" class="nav-btn">Cancel</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. HOST PRESENTER View (Teacher) -->
+        <section id="host-presenter-view" class="view hidden">
+          <div class="presenter-container">
+             <div class="presenter-header">
+                <div class="quiz-info">Quiz ID: <span id="presenter-quiz-id"></span></div>
+                <div class="timer-large" id="presenter-timer">00</div>
+                <div class="progress">Question <span id="presenter-q-current">1</span>/<span id="presenter-q-total">10</span></div>
+             </div>
+             
+             <div id="presenter-question-area" class="presenter-content">
+               <!-- Question text and options injected here -->
+             </div>
+
+             <div class="presenter-footer">
+               <span id="presenter-answers-count">0 Answers</span>
+               <button id="presenter-next-btn" class="btn-primary hidden">Next Question</button>
+             </div>
+          </div>
+        </section>
+
+        <!-- 6. HOST QUESTION LEADERBOARD View -->
+        <section id="host-question-leaderboard-view" class="view hidden">
+           <div class="welcome-card slide-in">
+             <h2>Leaderboard</h2>
+             <div id="host-question-leaderboard-list"></div>
+             <div class="action-buttons">
+               <button id="presenter-continue-btn" class="btn-primary">Next</button>
+             </div>
+           </div>
+        </section>
+
+        <!-- 7. PLAYER WAITING View (Student) -->
+        <section id="waiting-view" class="view hidden">
+          <div class="welcome-card slide-in">
+            <h2>Waiting...</h2>
+            <div class="loader"></div>
+            <p id="waiting-message">The game will start soon!</p>
+          </div>
+        </section>
+
+        <!-- 8. PLAYER QUIZ View (Student) -->
+        <section id="quiz-view" class="view hidden">
+          <div class="quiz-header">
+             <div class="player-info-header">Score: <span id="player-score-display">0</span></div>
+             <div class="progress">Q<span id="q-current">1</span>/<span id="q-total">10</span></div>
+          </div>
+          <div id="question-container" class="student-options-only">
+            <!-- Interacitve Buttons injected here -->
+          </div>
+        </section>
+        
+        <!-- 9. STUDENT QUESTION RESULT View -->
+        <section id="student-question-result-view" class="view hidden">
+          <div class="welcome-card slide-in" id="student-result-card">
+            <h2 id="student-result-title">Correct!</h2>
+            <p>Score: +<span id="student-result-points">0</span></p>
+            <p class="sub-text">Waiting for next question...</p>
+          </div>
+        </section>
+
+        <!-- 9.5 STUDENT LEADERBOARD View -->
+        <section id="student-leaderboard-view" class="view hidden">
+           <div class="welcome-card slide-in">
+             <h2>Current Standings</h2>
+             <div id="student-leaderboard-list"></div>
+             <p class="sub-text">Waiting for next question...</p>
+           </div>
+        </section>
+
+        <!-- 10. HOST Dashboard / End View -->
+        <section id="host-dashboard-view" class="view hidden">
+          <div class="welcome-card fade-in">
+            <h2>Quiz Finished!</h2>
+            <div class="action-buttons">
+              <button id="host-final-leaderboard-btn" class="btn-primary">Final Leaderboard</button>
+              <button id="host-home-btn" class="nav-btn">Home</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 11. PLAYER Result View -->
+        <section id="result-view" class="view hidden">
+          <div class="result-card">
+            <h2>Quiz Completed!</h2>
+            <div class="score-display">
+              <span id="final-score">0</span>
+            </div>
+            <p id="performance-msg">Great job!</p>
+            <div id="analytics-preview"></div>
+            <div class="action-buttons">
+              <button id="view-leaderboard-btn" class="btn-primary">
+                View Final Leaderboard
+              </button>
+              <button id="restart-btn" class="nav-btn">Go Home</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 12. Final Leaderboard View -->
+        <section id="leaderboard-view" class="view hidden">
+          <div class="leaderboard-card">
+            <h2>Top Performers</h2>
+            <div class="leaderboard-filters">
+              <button class="filter-btn active">All Time</button>
+            </div>
+            <div id="leaderboard-list">
+              <!-- Injected via JS -->
+              <p class="loading-text">Loading...</p>
+            </div>
+            <button id="back-home-btn" class="nav-btn">Back to Home</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Logic -->
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
