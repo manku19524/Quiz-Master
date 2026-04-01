@@ -112,6 +112,8 @@ export default class QuizManager {
               if (!this.hasAnsweredCurrent) {
                   // Time ran out and they didn't answer
                   this.showStudentResult(false, 0, "Time's Up!");
+              } else {
+                  this.highlightStudentResult();
               }
               break;
           case 'SHOWING_LEADERBOARD':
@@ -186,7 +188,7 @@ export default class QuizManager {
     let html = '';
     for(let i=0; i<4; i++) {
         html += `<button class="student-option-btn" data-id="${i}">
-                    <span class="option-label">${labels[i]}</span>
+                    <span class="option-label">Option : ${labels[i]}</span>
                  </button>`;
     }
 
@@ -207,11 +209,13 @@ export default class QuizManager {
     const allBtns = this.ui.questionContainer.querySelectorAll('.student-option-btn');
     allBtns.forEach(btn => btn.classList.add('disabled'));
     selectedBtn.classList.remove('disabled');
+    selectedBtn.classList.add('selected');
 
     const qData = this.quizQuestions[this.currentQuestionIndex];
     const questionObj = new Question(qData);
     
     const isCorrect = questionObj.verifyAnswer(selectedId);
+    this.lastAnswerWasCorrect = isCorrect;
     
     // Time logic
     const timeSpent = (Date.now() - this.questionStartTime) / 1000;
@@ -238,8 +242,17 @@ export default class QuizManager {
         timeSpent,
         points
     );
+  }
 
-    this.showStudentResult(isCorrect, points);
+  highlightStudentResult() {
+      const selectedBtn = this.ui.questionContainer.querySelector('.student-option-btn.selected');
+      if (selectedBtn && this.lastAnswerWasCorrect !== undefined) {
+          if (this.lastAnswerWasCorrect) {
+              selectedBtn.classList.add('blink-correct');
+          } else {
+              selectedBtn.classList.add('blink-incorrect');
+          }
+      }
   }
 
   showStudentResult(isCorrect, points, customTitle) {
@@ -260,18 +273,22 @@ export default class QuizManager {
       if (scores.length === 0) {
           listEl.innerHTML = '<p>No answers recorded.</p>';
       } else {
-          listEl.innerHTML = scores.map((s, i) => `
-              <div class="leaderboard-row">
-                  <span class="rank">#${i + 1}</span>
-                  <div class="player-info" style="text-align: left; margin-left:1rem; flex:1;">
-                      <strong>${s.username}</strong>
+          const myRankIndex = scores.findIndex(s => s.username === this.currentPlayer.username);
+          if (myRankIndex !== -1) {
+              const myData = scores[myRankIndex];
+              listEl.innerHTML = `
+                  <div class="personal-rank-board" style="text-align: center; margin-top: 2rem;">
+                     <h1 style="font-size: 5rem; color: hsl(var(--primary)); margin-bottom: 0;">#${myRankIndex + 1}</h1>
+                     <h3 style="color: hsl(var(--text-muted)); font-weight: normal;">Your Rank</h3>
+                     
+                     <div style="margin-top: 2rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-md);">
+                         <span style="font-size: 1.2rem;">Time Taken: <strong>${myData.timeSpent.toFixed(1)}s</strong></span>
+                     </div>
                   </div>
-                  <div class="player-score" style="text-align: right;">
-                      ${s.scoreSoFar} pts <br>
-                      <small style="font-size:0.75em; color:hsl(220,10%,70%)">+${s.points} (${s.timeSpent.toFixed(1)}s)</small>
-                  </div>
-              </div>
-          `).join('');
+              `;
+          } else {
+              listEl.innerHTML = '<p>You did not answer this question.</p>';
+          }
       }
   }
 

@@ -331,12 +331,11 @@ export default class HostManager {
             listEl.innerHTML = scores.map((s, i) => `
                 <div class="leaderboard-row">
                     <span class="rank">#${i + 1}</span>
-                    <div class="player-info">
+                    <div class="player-info" style="flex: 1; margin-left: 1rem;">
                         <strong>${s.username}</strong>
                     </div>
-                    <div class="player-score">
-                        ${s.scoreSoFar} pts <br>
-                        <small style="font-size:0.7em; color:hsl(220,10%,70%)">+${s.points} this round (${s.timeSpent.toFixed(1)}s)</small>
+                    <div class="player-score" style="text-align: right;">
+                        <span style="color: hsl(var(--primary)); font-size: 1.2rem;">${s.timeSpent.toFixed(1)}s</span>
                     </div>
                 </div>
             `).join('');
