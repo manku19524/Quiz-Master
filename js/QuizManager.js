@@ -25,6 +25,7 @@ export default class QuizManager {
       host: document.getElementById('host-view'),
       hostDashboard: document.getElementById('host-dashboard-view'),
       quiz: document.getElementById('quiz-view'),
+      waiting: document.getElementById('waiting-view'),
       result: document.getElementById('result-view'),
       leaderboard: document.getElementById('leaderboard-view'),
       'student-leaderboard-view': document.getElementById('student-leaderboard-view')
@@ -179,20 +180,13 @@ export default class QuizManager {
     
     this.questionStartTime = Date.now();
 
-    // Map shapes
-    const shapes = [
-        '<div class="shape-icon shape-triangle"></div>',
-        '<div class="shape-icon shape-diamond"></div>',
-        '<div class="shape-icon shape-circle"></div>',
-        '<div class="shape-icon shape-square"></div>'
-    ];
+    const labels = ['A', 'B', 'C', 'D'];
 
-    // Render 4 colored buttons for the student based on standard kahoot layout
-    // Assuming 4 options always for simplicity based on our host builder
+    // Render 4 simple letters for the student
     let html = '';
     for(let i=0; i<4; i++) {
         html += `<button class="student-option-btn" data-id="${i}">
-                    ${shapes[i]}
+                    <span class="option-label">${labels[i]}</span>
                  </button>`;
     }
 

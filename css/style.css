@@ -712,24 +712,26 @@ select option {
     z-index: 2;
 }
 
-/* Kahoot Style Shapes & Colors */
-.presenter-option[data-id="0"] { background-color: #e21b3c; } 
-.presenter-option[data-id="1"] { background-color: #1368ce; } 
-.presenter-option[data-id="2"] { background-color: #d89e00; } 
-.presenter-option[data-id="3"] { background-color: #26890c; } 
-
-.shape-icon {
-    width: 40px;
-    height: 40px;
-    background: white;
-    flex-shrink: 0;
-    opacity: 0.9;
+/* Dark Theme Options Ext (overrides) */
+.presenter-option {
+    background-color: hsla(0, 0%, 10%, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.05);
 }
 
-.shape-triangle { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
-.shape-diamond { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
-.shape-circle   { border-radius: 50%; }
-.shape-square   { border-radius: 4px; }
+.presenter-option:hover {
+    background-color: hsla(var(--primary), 0.15);
+    border-color: hsla(var(--primary), 0.4);
+}
+
+.option-label {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: hsl(var(--primary));
+    opacity: 0.9;
+    flex-shrink: 0;
+    width: 50px;
+    text-align: center;
+}
 
 .presenter-footer {
     display: flex;
@@ -767,15 +769,20 @@ select option {
 .student-option-btn:active { transform: scale(0.95); }
 .student-option-btn.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
 
-.student-option-btn[data-id="0"] { background-color: #e21b3c; }
-.student-option-btn[data-id="1"] { background-color: #1368ce; }
-.student-option-btn[data-id="2"] { background-color: #d89e00; }
-.student-option-btn[data-id="3"] { background-color: #26890c; }
+.student-option-btn {
+    background-color: hsla(0, 0%, 10%, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
 
-.student-option-btn .shape-icon {
-    width: 60px;
-    height: 60px;
-    background: white;
+.student-option-btn:hover {
+    background-color: hsla(var(--primary), 0.15);
+    border-color: hsla(var(--primary), 0.4);
+}
+
+.student-option-btn .option-label {
+    font-size: 4rem;
+    width: auto;
 }
 
 /* --- MOBILE RESPONSIVENESS --- */

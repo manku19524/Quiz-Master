@@ -231,20 +231,14 @@ export default class HostManager {
       
       const questionArea = document.getElementById('presenter-question-area');
       
-      // Map index to shapes
-      const shapes = [
-          '<div class="shape-icon shape-triangle"></div>',
-          '<div class="shape-icon shape-diamond"></div>',
-          '<div class="shape-icon shape-circle"></div>',
-          '<div class="shape-icon shape-square"></div>'
-      ];
+      const labels = ['A.', 'B.', 'C.', 'D.'];
 
       questionArea.innerHTML = `
           <h2>${q.questionText}</h2>
           <div class="presenter-options-grid">
               ${q.options.map((opt, i) => `
                   <div class="presenter-option" data-id="${opt.id}">
-                      ${shapes[i]}
+                      <span class="option-label">${labels[i]}</span>
                       <span>${opt.text}</span>
                   </div>
               `).join('')}
@@ -289,8 +283,8 @@ export default class HostManager {
   }
 
   async forceEndQuestion() {
-      // Time is up. Show "Next" button or auto-transition
-      document.getElementById('presenter-next-btn').classList.remove('hidden');
+      // Time is up. Hide next button since we auto-transition
+      document.getElementById('presenter-next-btn').classList.add('hidden');
       
       // Highlight correct answer on presenter screen
       const q = this.quizQuestions[this.currentQuestionIndex];
@@ -300,16 +294,22 @@ export default class HostManager {
               opt.style.opacity = '0.3';
               opt.style.filter = 'grayscale(1)';
           } else {
-              opt.style.transform = 'scale(1.1)';
-              opt.style.boxShadow = '0 0 30px rgba(255,255,255,0.8)';
+              opt.style.transform = 'scale(1.05)';
+              opt.style.boxShadow = '0 0 20px hsl(var(--primary))';
               opt.style.zIndex = '10';
-              opt.style.border = '4px solid white';
+              opt.style.borderColor = 'hsl(var(--primary))';
+              opt.style.background = 'hsla(var(--primary), 0.2)';
           }
       });
 
       await this.db.updateGameState(this.currentQuizId, {
           questionStatus: 'SHOWING_RESULT'
       });
+
+      // Auto transition to leaderboard after 3 seconds
+      setTimeout(() => {
+          this.showQuestionLeaderboard();
+      }, 3000);
   }
 
   async showQuestionLeaderboard() {
