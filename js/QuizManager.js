@@ -65,6 +65,13 @@ export default class QuizManager {
     if (this.ui.backHomeBtn) this.ui.backHomeBtn.addEventListener('click', () => location.reload());
     if (this.ui.viewLeaderboardBtn) this.ui.viewLeaderboardBtn.addEventListener('click', () => this.showLeaderboard());
     if (this.ui.navLeaderboard) this.ui.navLeaderboard.addEventListener('click', () => this.showLeaderboard());
+
+    // Host final leaderboard trigger
+    window.addEventListener('showFinalLeaderboard', async (e) => {
+        const quizId = e.detail;
+        if (quizId) this.currentQuizId = quizId;
+        await this.showLeaderboard();
+    });
   }
 
   async joinQuiz(quizId, password, player) {
