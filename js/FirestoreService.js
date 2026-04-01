@@ -6,6 +6,7 @@ export default class FirestoreService {
   constructor() {
     this.db = null;
     this.isInitialized = false;
+    this.quizDocRefCache = new Map(); // Cache: quizId -> docRef
 
     try {
       if (firebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
@@ -21,6 +22,28 @@ export default class FirestoreService {
     }
   }
 
+  // --- CACHED DOCUMENT REFERENCE RESOLVER ---
+  // Instead of querying Firestore every time to find the quiz document,
+  // we cache the reference after the first lookup. This cuts reads roughly in half.
+
+  async resolveQuizDocRef(quizId) {
+    if (this.quizDocRefCache.has(quizId)) {
+      return this.quizDocRefCache.get(quizId);
+    }
+
+    const qRef = collection(this.db, "quizzes");
+    const q = query(qRef, where("quizId", "==", quizId));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const docRef = querySnapshot.docs[0].ref;
+      this.quizDocRefCache.set(quizId, docRef);
+      return docRef;
+    }
+
+    return null;
+  }
+
   // --- HOST FUNCTIONS ---
 
   async createQuiz(quizData) {
@@ -30,12 +53,12 @@ export default class FirestoreService {
     }
 
     try {
-      // Check if ID exists (Optional, for now assuming random is unique enough or handle error)
-      // quizData should contain: { quizId, password, title, questions: [] }
-      await addDoc(collection(this.db, "quizzes"), {
+      const docRef = await addDoc(collection(this.db, "quizzes"), {
         ...quizData,
         createdAt: serverTimestamp()
       });
+      // Pre-cache the newly created document reference
+      this.quizDocRefCache.set(quizData.quizId, docRef);
       console.log("Quiz Created:", quizData.quizId);
       return true;
     } catch (error) {
@@ -64,26 +87,27 @@ export default class FirestoreService {
     try {
       const qRef = collection(this.db, "quizzes");
       const q = query(qRef, where("quizId", "==", quizId));
-      
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
         throw new Error("Quiz ID not found");
       }
 
-      // Should only be one quiz with this ID
-      const docData = querySnapshot.docs[0].data();
+      const docSnap = querySnapshot.docs[0];
+      const docData = docSnap.data();
 
-      // Verify Password
+      // Cache the doc ref for future use
+      this.quizDocRefCache.set(quizId, docSnap.ref);
+
       if (docData.password !== password) {
         throw new Error("Incorrect Password");
       }
 
-      return docData; // Returns { title, questions: [], ... }
+      return docData;
 
     } catch (error) {
       console.error("Error fetching quiz:", error);
-      throw error; // Propagate error to UI
+      throw error;
     }
   }
 
@@ -109,23 +133,19 @@ export default class FirestoreService {
   async submitQuestionAnswer(quizId, player, questionId, isCorrect, timeSpent, pointsEarned) {
       if (!this.isInitialized) return;
       try {
-          const qRef = collection(this.db, "quizzes");
-          const q = query(qRef, where("quizId", "==", quizId));
-          const querySnapshot = await getDocs(q);
+          const quizDocRef = await this.resolveQuizDocRef(quizId);
+          if (!quizDocRef) return;
+
+          const perQuestionLbRef = collection(quizDocRef, `question_${questionId}_leaderboard`);
           
-          if (!querySnapshot.empty) {
-              const quizDocRef = querySnapshot.docs[0].ref;
-              const perQuestionLbRef = collection(quizDocRef, `question_${questionId}_leaderboard`);
-              
-              await addDoc(perQuestionLbRef, {
-                  username: player.username,
-                  isCorrect: isCorrect,
-                  timeSpent: timeSpent,
-                  points: pointsEarned,
-                  scoreSoFar: player.score, // Snapshot of their total score at this point
-                  timestamp: serverTimestamp()
-              });
-          }
+          await addDoc(perQuestionLbRef, {
+              username: player.username,
+              isCorrect: isCorrect,
+              timeSpent: timeSpent,
+              points: pointsEarned,
+              scoreSoFar: player.score,
+              timestamp: serverTimestamp()
+          });
       } catch (error) {
           console.error("Error submitting question answer:", error);
       }
@@ -135,26 +155,20 @@ export default class FirestoreService {
       if (!this.isInitialized) return [];
 
       try {
-          const qRef = collection(this.db, "quizzes");
-          const q = query(qRef, where("quizId", "==", quizId));
-          const querySnapshot = await getDocs(q);
+          const quizDocRef = await this.resolveQuizDocRef(quizId);
+          if (!quizDocRef) return [];
+
+          const perQuestionLbRef = collection(quizDocRef, `question_${questionId}_leaderboard`);
           
-          if (!querySnapshot.empty) {
-              const quizDocRef = querySnapshot.docs[0].ref;
-              const perQuestionLbRef = collection(quizDocRef, `question_${questionId}_leaderboard`);
-              
-              const qLb = query(perQuestionLbRef, limit(50));
-              const lbSnapshot = await getDocs(qLb);
-              
-              const leaderboard = [];
-              lbSnapshot.forEach(doc => leaderboard.push(doc.data()));
-              
-              // Sort by points for this question, then reverse time, OR sort by total score
-              // We'll sort by total score so far to match Kahoot's cumulative leaderboard
-              leaderboard.sort((a, b) => b.scoreSoFar - a.scoreSoFar);
-              
-              return leaderboard;
-          }
+          const qLb = query(perQuestionLbRef, limit(50));
+          const lbSnapshot = await getDocs(qLb);
+          
+          const leaderboard = [];
+          lbSnapshot.forEach(doc => leaderboard.push(doc.data()));
+          
+          leaderboard.sort((a, b) => b.scoreSoFar - a.scoreSoFar);
+          
+          return leaderboard;
       } catch(error) {
           console.error("Error getting question leaderboard", error);
       }
@@ -166,8 +180,6 @@ export default class FirestoreService {
 
     try {
       const lbRef = collection(this.db, "leaderboard");
-      // SIMPLIFIED QUERY: Query only by quizId to avoid Firestore Index creation requirement.
-      // We will sort in JavaScript (fine for small apps).
       const q = query(
         lbRef, 
         where("quizId", "==", quizId),
@@ -180,12 +192,11 @@ export default class FirestoreService {
         leaderboard.push(doc.data());
       });
       
-      // Client-side Sort: Score Descending, then Time Ascending
       leaderboard.sort((a, b) => {
           if (b.score !== a.score) {
-              return b.score - a.score; // Higher score first
+              return b.score - a.score;
           } else {
-              return (a.time || 9999) - (b.time || 9999); // Lower time better
+              return (a.time || 9999) - (b.time || 9999);
           }
       });
 
@@ -196,7 +207,7 @@ export default class FirestoreService {
     }
   }
 
-  async deleteQuiz(quizId, password) {
+  async deleteQuiz(quizId) {
     if (!this.isInitialized) return false;
 
     try {
@@ -211,19 +222,14 @@ export default class FirestoreService {
         }
         console.log(`Deleted ${lbCount} leaderboard entries for quiz ${quizId}.`);
 
-        // 2. Find the Quiz Document
-        const qRef = collection(this.db, "quizzes");
-        const q = query(qRef, where("quizId", "==", quizId));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            console.warn(`Quiz ${quizId} not found. (It might have been deleted already)`);
+        // 2. Find the Quiz Document (use cache if available)
+        const docRef = await this.resolveQuizDocRef(quizId);
+        if (!docRef) {
+            console.warn(`Quiz ${quizId} not found.`);
             return false;
         }
 
-        const docRef = querySnapshot.docs[0].ref;
-
-        // 3. Delete 'players' subcollection if any exists
+        // 3. Delete 'players' subcollection
         const playersRef = collection(docRef, "players");
         const playersSnapshot = await getDocs(playersRef);
         let playersCount = 0;
@@ -231,14 +237,15 @@ export default class FirestoreService {
             await deleteDoc(pSnap.ref);
             playersCount++;
         }
-        console.log(`Deleted ${playersCount} players from subcollection for quiz ${quizId}.`);
+        console.log(`Deleted ${playersCount} players for quiz ${quizId}.`);
 
-        // 4. Finally, delete the quiz document itself
+        // 4. Delete the quiz document itself
         await deleteDoc(docRef);
-        console.log(`Quiz document ${quizId} deleted completely.`);
+        this.quizDocRefCache.delete(quizId); // Clear from cache
+        console.log(`Quiz ${quizId} deleted completely.`);
         return true;
     } catch (error) {
-        console.error("Error completely deleting quiz:", error);
+        console.error("Error deleting quiz:", error);
         return false;
     }
   }
@@ -246,8 +253,6 @@ export default class FirestoreService {
   async deleteAllData() {
     if (!this.isInitialized) return false;
     try {
-        // First delete all 'players' documents via collection group
-        // This ensures we get orphaned subcollections
         const playersGroupRef = collectionGroup(this.db, "players");
         const playersSnapshot = await getDocs(playersGroupRef);
         let playersCount = 0;
@@ -272,7 +277,8 @@ export default class FirestoreService {
                 console.log(`${collName} collection is already empty.`);
             }
         }
-        console.log("All specified collections have been cleared from the database.");
+        this.quizDocRefCache.clear(); // Clear entire cache
+        console.log("All data cleared.");
         return true;
     } catch (error) {
         console.error("Error deleting all data:", error);
@@ -285,17 +291,13 @@ export default class FirestoreService {
   async updateQuizStatus(quizId, status, additionalData = {}) {
     if (!this.isInitialized) return false;
     try {
-      const qRef = collection(this.db, "quizzes");
-      const q = query(qRef, where("quizId", "==", quizId));
-      const querySnapshot = await getDocs(q);
+      const docRef = await this.resolveQuizDocRef(quizId);
+      if (!docRef) return false;
 
-      if (!querySnapshot.empty) {
-        const docRef = querySnapshot.docs[0].ref;
-        const payload = { ...additionalData };
-        if (status) payload.status = status;
-        await updateDoc(docRef, payload);
-        return true;
-      }
+      const payload = { ...additionalData };
+      if (status) payload.status = status;
+      await updateDoc(docRef, payload);
+      return true;
     } catch (error) {
       console.error("Error updating status:", error);
     }
@@ -303,27 +305,20 @@ export default class FirestoreService {
   }
 
   async updateGameState(quizId, stateObj) {
-      // Wrapper for clarity
       return this.updateQuizStatus(quizId, stateObj.status, stateObj);
   }
 
   async checkPlayerExists(quizId, username) {
       if (!this.isInitialized) return false;
       try {
-          const qRef = collection(this.db, "quizzes");
-          const q = query(qRef, where("quizId", "==", quizId));
-          const querySnapshot = await getDocs(q);
+          const quizDocRef = await this.resolveQuizDocRef(quizId);
+          if (!quizDocRef) return false;
 
-          if (!querySnapshot.empty) {
-              const quizDocRef = querySnapshot.docs[0].ref;
-              const playersRef = collection(quizDocRef, "players");
-              
-              const pq = query(playersRef, where("username", "==", username));
-              const pSnapshot = await getDocs(pq);
-              
-              return !pSnapshot.empty;
-          }
-          return false;
+          const playersRef = collection(quizDocRef, "players");
+          const pq = query(playersRef, where("username", "==", username));
+          const pSnapshot = await getDocs(pq);
+          
+          return !pSnapshot.empty;
       } catch (error) {
           console.error("Error checking player:", error);
           return false;
@@ -333,19 +328,13 @@ export default class FirestoreService {
   async addPlayerToLobby(quizId, player) {
     if (!this.isInitialized) return;
     try {
-      // Add to sub-collection 'players' inside the quiz document
-      // First get the quiz doc ref
-      const qRef = collection(this.db, "quizzes");
-      const q = query(qRef, where("quizId", "==", quizId));
-      const querySnapshot = await getDocs(q);
+      const quizDocRef = await this.resolveQuizDocRef(quizId);
+      if (!quizDocRef) return;
 
-      if (!querySnapshot.empty) {
-        const quizDocRef = querySnapshot.docs[0].ref;
-        await addDoc(collection(quizDocRef, "players"), {
-            username: player.username,
-            joinedAt: serverTimestamp()
-        });
-      }
+      await addDoc(collection(quizDocRef, "players"), {
+          username: player.username,
+          joinedAt: serverTimestamp()
+      });
     } catch (error) {
       console.error("Error adding player to lobby:", error);
     }
@@ -354,36 +343,22 @@ export default class FirestoreService {
   listenToPlayers(quizId, callback) {
     if (!this.isInitialized) return null;
     
-    // We need the document ID to listen to subcollection
-    // For simplicity in this structure, we'll need to query for the doc first
-    // ideally we would store the auto-generated Doc ID, but we use quizId.
-    // So we will do a query listener.
-    
-    // Listener for players requires knowing the parent doc. 
-    // Optimization: We will query collection group or find the doc first.
-    // Let's use a workaround: Query 'quizzes' to find doc, then listen.
-    
     let unsubscribe = null;
 
     const findAndListen = async () => {
-        const qRef = collection(this.db, "quizzes");
-        const q = query(qRef, where("quizId", "==", quizId));
-        const querySnapshot = await getDocs(q);
+        const quizDocRef = await this.resolveQuizDocRef(quizId);
+        if (!quizDocRef) return;
 
-        if (!querySnapshot.empty) {
-            const quizDocRef = querySnapshot.docs[0].ref;
-            const playersRef = collection(quizDocRef, "players");
-            
-            unsubscribe = onSnapshot(playersRef, (snapshot) => {
-                const players = [];
-                snapshot.forEach(doc => players.push(doc.data()));
-                callback(players);
-            });
-        }
+        const playersRef = collection(quizDocRef, "players");
+        
+        unsubscribe = onSnapshot(playersRef, (snapshot) => {
+            const players = [];
+            snapshot.forEach(doc => players.push(doc.data()));
+            callback(players);
+        });
     };
 
     findAndListen();
-    // Return a function to unsubscribe when needed (async constraint ignored for now)
     return () => { if (unsubscribe) unsubscribe(); };
   }
 
@@ -398,6 +373,10 @@ export default class FirestoreService {
          
          unsubscribe = onSnapshot(q, (snapshot) => {
              snapshot.forEach((doc) => {
+                 // Cache the ref on first snapshot if not already cached
+                 if (!this.quizDocRefCache.has(quizId)) {
+                     this.quizDocRefCache.set(quizId, doc.ref);
+                 }
                  callback(doc.data());
              });
          });
@@ -407,9 +386,7 @@ export default class FirestoreService {
     return () => { if (unsubscribe) unsubscribe(); };
   }
 
-  // Helper to upload mock questions (Deprecated but kept for reference if needed, or repurposed)
   async seedDatabase() {
-      // Legacy seeder, no longer relevant for dynamic quizzes unless updated
       console.log("Seeding is disabled in Host/Join mode.");
   }
 }
