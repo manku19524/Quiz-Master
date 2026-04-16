@@ -140,16 +140,21 @@ export default class QuizManager {
       return;
     }
 
-    this.ui.leaderboardList.innerHTML = data.map((entry, index) => `
+    this.ui.leaderboardList.innerHTML = `
+      <div class="leaderboard-header">
+        <span style="min-width: 40px; text-align: center;">Rank</span>
+        <span style="flex: 1; margin-left: 0.75rem;">Name</span>
+        <span style="min-width: 50px; text-align: center;">Marks</span>
+        <span style="min-width: 55px; text-align: right;">Time</span>
+      </div>
+    ` + data.map((entry, index) => `
       <div class="leaderboard-row">
         <span class="rank">#${index + 1}</span>
-        <div class="player-info" style="flex: 1; margin-left: 1rem;">
+        <div class="player-info">
           <strong>${entry.username}</strong>
         </div>
-        <div class="player-score" style="text-align: right; display: flex; gap: 1.5rem; align-items: center;">
-          <span>${entry.correctCount || 0}/${entry.totalQuestions || '?'}</span>
-          <span style="color: hsl(var(--primary))">${(entry.time || 0).toFixed(1)}s</span>
-        </div>
+        <span class="player-marks">${entry.correctCount || 0}/${entry.totalQuestions || '?'}</span>
+        <span class="player-time">${(entry.time || 0).toFixed(1)}s</span>
       </div>
     `).join('');
   }

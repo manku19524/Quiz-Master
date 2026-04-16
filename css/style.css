@@ -749,14 +749,80 @@ select option {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
     width: 100%;
-    max-width: 500px;
+    max-width: 550px;
     margin: 0 auto;
+}
+
+/* Leaderboard Row Styles */
+.leaderboard-header {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.leaderboard-header span {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: hsl(var(--text-muted));
+    font-weight: 600;
+}
+
+.leaderboard-row {
+    display: flex;
+    align-items: center;
+    padding: 0.9rem 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(0, 0, 0, 0.15);
+    margin-bottom: 0.5rem;
+    transition: background 0.2s ease;
+}
+
+.leaderboard-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.leaderboard-row .rank {
+    font-size: 1rem;
+    font-weight: 700;
+    color: hsl(var(--primary));
+    min-width: 40px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.leaderboard-row .player-info {
+    flex: 1;
+    margin-left: 0.75rem;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.leaderboard-row .player-marks {
+    font-size: 0.9rem;
+    color: hsl(var(--text-muted));
+    min-width: 50px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.leaderboard-row .player-time {
+    font-size: 0.9rem;
+    color: hsl(var(--primary));
+    min-width: 55px;
+    text-align: right;
+    flex-shrink: 0;
+    font-weight: 600;
 }
 
 @media (max-width: 600px) {
     .result-card,
     .leaderboard-card {
-        padding: 2rem 1.2rem;
+        padding: 2rem 1rem;
         max-width: 100%;
         border-radius: var(--radius-md);
     }
