@@ -301,7 +301,11 @@ export default class QuizManager {
     if (marksEl) marksEl.textContent = `${correctCount} / ${totalQuestions}`;
     
     const timeEl = document.getElementById('final-result-time');
-    if (timeEl) timeEl.textContent = `${totalTime.toFixed(1)}s`;
+    if (timeEl) {
+      const answeredCount = this.currentPlayer.answers.length;
+      const avgTime = answeredCount > 0 ? totalTime / answeredCount : 0;
+      timeEl.textContent = `${avgTime.toFixed(1)}s`;
+    }
     
     // Fetch Rank
     const rankEl = document.getElementById('final-result-rank');
