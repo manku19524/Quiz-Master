@@ -78,6 +78,7 @@ export default class QuizManager {
         // Cache questions
         if (!this.quizQuestions.length && quizData.questions) {
             this.quizQuestions = quizData.questions;
+            this.quizTimeLimit = quizData.timeLimit || 10;
         }
 
         this.handleGameStateChange(quizData);
@@ -144,7 +145,7 @@ export default class QuizManager {
       <div class="leaderboard-header">
         <span style="min-width: 40px; text-align: center;">Rank</span>
         <span style="flex: 1; margin-left: 0.75rem;">Name</span>
-        <span style="min-width: 50px; text-align: center;">Marks</span>
+        <span style="min-width: 50px; text-align: center;">Score</span>
         <span style="min-width: 55px; text-align: right;">Total Time</span>
       </div>
     ` + data.map((entry, index) => {
@@ -155,7 +156,7 @@ export default class QuizManager {
         <div class="player-info">
           <strong>${entry.username}</strong>
         </div>
-        <span class="player-marks">${entry.correctCount || 0}/${entry.totalQuestions || '?'}</span>
+        <span class="player-marks">${entry.score || 0}</span>
         <span class="player-time">${totalTime.toFixed(1)}s</span>
       </div>
     `;
@@ -217,10 +218,11 @@ export default class QuizManager {
     // Time logic
     const timeSpent = (Date.now() - this.questionStartTime) / 1000;
     
-    // Points logic: 1 point for correct, 0 for wrong
+    // Points logic: Kahoot style (max 1000, scales down with time, 0 if wrong)
+    const baseTimer = this.quizTimeLimit || 10;
     let points = 0;
     if (isCorrect) {
-        points = 1;
+        points = Math.max(0, Math.round((1 - (timeSpent / baseTimer) / 2) * 1000));
         this.currentPlayer.score += points;
     }
 
@@ -282,7 +284,7 @@ export default class QuizManager {
                              <strong style="font-size: 1.2rem;">${myUsername}</strong>
                          </div>
                          <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
-                             <span style="color: hsl(var(--text-muted)); font-size: 0.9rem; text-transform: uppercase;">Total Marks</span>
+                             <span style="color: hsl(var(--text-muted)); font-size: 0.9rem; text-transform: uppercase;">Total Score</span>
                              <strong style="font-size: 1.2rem; color: hsl(var(--primary));">${myData.scoreSoFar}</strong>
                          </div>
                          <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
@@ -315,13 +317,11 @@ export default class QuizManager {
     if (nameEl) nameEl.textContent = this.currentPlayer.username;
     
     const marksEl = document.getElementById('final-result-marks');
-    if (marksEl) marksEl.textContent = `${correctCount} / ${totalQuestions}`;
+    if (marksEl) marksEl.textContent = this.currentPlayer.score;
     
     const timeEl = document.getElementById('final-result-time');
     if (timeEl) {
-      const answeredCount = this.currentPlayer.answers.length;
-      const avgTime = answeredCount > 0 ? totalTime / answeredCount : 0;
-      timeEl.textContent = `${avgTime.toFixed(1)}s`;
+      timeEl.textContent = `${totalTime.toFixed(1)}s`;
     }
     
     // Fetch Rank
