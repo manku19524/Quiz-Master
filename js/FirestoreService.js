@@ -168,12 +168,12 @@ export default class FirestoreService {
           const leaderboard = [];
           lbSnapshot.forEach(doc => leaderboard.push(doc.data()));
           
-          // Sort by score (highest first), then by average time (lowest first)
+          // Sort by score (highest first), then by time spent on this specific question (lowest first)
           leaderboard.sort((a, b) => {
               if (b.scoreSoFar !== a.scoreSoFar) {
                   return b.scoreSoFar - a.scoreSoFar;
               }
-              return (a.avgTimeSoFar || 9999) - (b.avgTimeSoFar || 9999);
+              return (a.timeSpent || 9999) - (b.timeSpent || 9999);
           });
           
           return leaderboard;
@@ -200,14 +200,12 @@ export default class FirestoreService {
         leaderboard.push(doc.data());
       });
       
-      // Sort by score (highest first), then by average time (lowest first)
+      // Sort by score (highest first), then by total time (lowest first)
       leaderboard.sort((a, b) => {
           if (b.score !== a.score) {
               return b.score - a.score;
           }
-          const avgTimeA = (a.totalQuestions && a.totalQuestions > 0) ? (a.time || 0) / a.totalQuestions : 9999;
-          const avgTimeB = (b.totalQuestions && b.totalQuestions > 0) ? (b.time || 0) / b.totalQuestions : 9999;
-          return avgTimeA - avgTimeB;
+          return (a.time || 9999) - (b.time || 9999);
       });
 
       return leaderboard;

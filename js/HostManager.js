@@ -400,10 +400,9 @@ export default class HostManager {
                     <span style="min-width: 40px; text-align: center;">Rank</span>
                     <span style="flex: 1; margin-left: 0.75rem;">Name</span>
                     <span style="min-width: 50px; text-align: center;">Score</span>
-                    <span style="min-width: 55px; text-align: right;">Avg Time</span>
+                    <span style="min-width: 55px; text-align: right;">Time taken</span>
                 </div>
             ` + scores.map((s, i) => {
-                const avgTime = s.avgTimeSoFar != null ? s.avgTimeSoFar : (s.timeSpent || 0);
                 return `
                 <div class="leaderboard-row">
                     <span class="rank">#${i + 1}</span>
@@ -411,7 +410,7 @@ export default class HostManager {
                         <strong>${s.username}</strong>
                     </div>
                     <span class="player-marks">${s.scoreSoFar}</span>
-                    <span class="player-time">${avgTime.toFixed(1)}s</span>
+                    <span class="player-time">${s.timeSpent.toFixed(1)}s</span>
                 </div>
                 `;
             }).join('');

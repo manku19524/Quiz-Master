@@ -145,12 +145,10 @@ export default class QuizManager {
         <span style="min-width: 40px; text-align: center;">Rank</span>
         <span style="flex: 1; margin-left: 0.75rem;">Name</span>
         <span style="min-width: 50px; text-align: center;">Marks</span>
-        <span style="min-width: 55px; text-align: right;">Avg Time</span>
+        <span style="min-width: 55px; text-align: right;">Total Time</span>
       </div>
     ` + data.map((entry, index) => {
       const totalTime = entry.time || 0;
-      const answeredCount = entry.totalQuestions || 1;
-      const avgTime = totalTime / answeredCount;
       return `
       <div class="leaderboard-row">
         <span class="rank">#${index + 1}</span>
@@ -158,7 +156,7 @@ export default class QuizManager {
           <strong>${entry.username}</strong>
         </div>
         <span class="player-marks">${entry.correctCount || 0}/${entry.totalQuestions || '?'}</span>
-        <span class="player-time">${avgTime.toFixed(1)}s</span>
+        <span class="player-time">${totalTime.toFixed(1)}s</span>
       </div>
     `;
     }).join('');
@@ -228,10 +226,6 @@ export default class QuizManager {
 
     this.currentPlayer.recordAnswer(questionObj.id, isCorrect, timeSpent, questionObj.topic);
 
-    // Calculate average time so far for leaderboard ranking
-    const answeredCount = this.currentPlayer.answers.length;
-    const avgTime = answeredCount > 0 ? this.currentPlayer.totalTimeTaken / answeredCount : 0;
-
     // Send answer to DB immediately
     await this.db.submitQuestionAnswer(
         this.currentQuizId, 
@@ -239,8 +233,7 @@ export default class QuizManager {
         this.currentQuestionIndex, 
         isCorrect, 
         timeSpent,
-        points,
-        avgTime
+        points
     );
   }
 
@@ -274,30 +267,34 @@ export default class QuizManager {
           listEl.innerHTML = '<p>No answers recorded.</p>';
       } else {
           const myUsername = this.currentPlayer.username;
-          let html = `
-              <div class="leaderboard-header">
-                <span style="min-width: 40px; text-align: center;">Rank</span>
-                <span style="flex: 1; margin-left: 0.75rem;">Name</span>
-                <span style="min-width: 50px; text-align: center;">Score</span>
-                <span style="min-width: 55px; text-align: right;">Avg Time</span>
-              </div>
-          `;
-          html += scores.map((s, i) => {
-              const isMe = s.username === myUsername;
-              const questionsAnswered = (this.currentQuestionIndex + 1) || 1;
-              const avgTime = s.avgTimeSoFar != null ? s.avgTimeSoFar : (s.timeSpent || 0);
-              return `
-              <div class="leaderboard-row${isMe ? ' highlight-me' : ''}">
-                <span class="rank">#${i + 1}</span>
-                <div class="player-info" style="flex: 1; margin-left: 1rem;">
-                    <strong>${s.username}${isMe ? ' (You)' : ''}</strong>
-                </div>
-                <span class="player-marks">${s.scoreSoFar}</span>
-                <span class="player-time">${avgTime.toFixed(1)}s</span>
-              </div>
+          const myRankIndex = scores.findIndex(s => s.username === myUsername);
+          
+          if (myRankIndex !== -1) {
+              const myData = scores[myRankIndex];
+              listEl.innerHTML = `
+                  <div class="personal-rank-board" style="text-align: center; margin-top: 2rem;">
+                     <h1 style="font-size: 5rem; color: hsl(var(--primary)); margin-bottom: 0;">#${myRankIndex + 1}</h1>
+                     <h3 style="color: hsl(var(--text-muted)); font-weight: normal;">Your Rank</h3>
+                     
+                     <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem; text-align: left;">
+                         <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                             <span style="color: hsl(var(--text-muted)); font-size: 0.9rem; text-transform: uppercase;">Name</span>
+                             <strong style="font-size: 1.2rem;">${myUsername}</strong>
+                         </div>
+                         <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                             <span style="color: hsl(var(--text-muted)); font-size: 0.9rem; text-transform: uppercase;">Total Marks</span>
+                             <strong style="font-size: 1.2rem; color: hsl(var(--primary));">${myData.scoreSoFar}</strong>
+                         </div>
+                         <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                             <span style="color: hsl(var(--text-muted)); font-size: 0.9rem; text-transform: uppercase;">Time taken</span>
+                             <strong style="font-size: 1.2rem; color: hsl(var(--primary));">${myData.timeSpent.toFixed(1)}s</strong>
+                         </div>
+                     </div>
+                  </div>
               `;
-          }).join('');
-          listEl.innerHTML = html;
+          } else {
+              listEl.innerHTML = '<p>You did not answer this question.</p>';
+          }
       }
   }
 
