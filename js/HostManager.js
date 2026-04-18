@@ -395,17 +395,26 @@ export default class HostManager {
         if (scores.length === 0) {
             listEl.innerHTML = '<p>No answers recorded.</p>';
         } else {
-            listEl.innerHTML = scores.map((s, i) => `
+            listEl.innerHTML = `
+                <div class="leaderboard-header">
+                    <span style="min-width: 40px; text-align: center;">Rank</span>
+                    <span style="flex: 1; margin-left: 0.75rem;">Name</span>
+                    <span style="min-width: 50px; text-align: center;">Score</span>
+                    <span style="min-width: 55px; text-align: right;">Avg Time</span>
+                </div>
+            ` + scores.map((s, i) => {
+                const avgTime = s.avgTimeSoFar != null ? s.avgTimeSoFar : (s.timeSpent || 0);
+                return `
                 <div class="leaderboard-row">
                     <span class="rank">#${i + 1}</span>
                     <div class="player-info" style="flex: 1; margin-left: 1rem;">
                         <strong>${s.username}</strong>
                     </div>
-                    <div class="player-score" style="text-align: right;">
-                        <span style="color: hsl(var(--primary)); font-size: 1.2rem;">${s.timeSpent.toFixed(1)}s</span>
-                    </div>
+                    <span class="player-marks">${s.scoreSoFar}</span>
+                    <span class="player-time">${avgTime.toFixed(1)}s</span>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
   }
 

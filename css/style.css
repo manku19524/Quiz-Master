@@ -1218,6 +1218,47 @@ select option {
     font-weight: 600;
 }
 
+/* Highlight current player in student leaderboard */
+.leaderboard-row.highlight-me {
+    background: hsla(var(--primary), 0.15);
+    border: 1px solid hsla(var(--primary), 0.4);
+    box-shadow: 0 0 12px hsla(var(--primary), 0.2);
+}
+
+/* Result stats grid */
+.result-stats {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+
+.result-stat-item {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-md);
+    padding: 1.2rem 0.8rem;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.result-stat-label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: hsl(var(--text-muted));
+    margin-bottom: 0.5rem;
+}
+
+.result-stat-value {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: hsl(var(--text-main));
+    font-family: 'Outfit', sans-serif;
+}
+
 @media (max-width: 600px) {
     .result-card,
     .leaderboard-card {

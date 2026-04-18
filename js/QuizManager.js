@@ -145,18 +145,23 @@ export default class QuizManager {
         <span style="min-width: 40px; text-align: center;">Rank</span>
         <span style="flex: 1; margin-left: 0.75rem;">Name</span>
         <span style="min-width: 50px; text-align: center;">Marks</span>
-        <span style="min-width: 55px; text-align: right;">Time</span>
+        <span style="min-width: 55px; text-align: right;">Avg Time</span>
       </div>
-    ` + data.map((entry, index) => `
+    ` + data.map((entry, index) => {
+      const totalTime = entry.time || 0;
+      const answeredCount = entry.totalQuestions || 1;
+      const avgTime = totalTime / answeredCount;
+      return `
       <div class="leaderboard-row">
         <span class="rank">#${index + 1}</span>
         <div class="player-info">
           <strong>${entry.username}</strong>
         </div>
         <span class="player-marks">${entry.correctCount || 0}/${entry.totalQuestions || '?'}</span>
-        <span class="player-time">${(entry.time || 0).toFixed(1)}s</span>
+        <span class="player-time">${avgTime.toFixed(1)}s</span>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   switchView(viewName) {
@@ -214,18 +219,18 @@ export default class QuizManager {
     // Time logic
     const timeSpent = (Date.now() - this.questionStartTime) / 1000;
     
-    // Points logic (faster = more points, max 1000)
-    // Assume 10s base time limit for points calculation if not provided
-    const baseTimer = this.quizTimeLimit || 10;
+    // Points logic: 1 point for correct, 0 for wrong
     let points = 0;
     if (isCorrect) {
-        // Linear scale from 500 to 1000 based on speed
-        const timeRatio = Math.max(0, (baseTimer - timeSpent) / baseTimer);
-        points = Math.round(500 + (500 * timeRatio));
+        points = 1;
         this.currentPlayer.score += points;
     }
 
     this.currentPlayer.recordAnswer(questionObj.id, isCorrect, timeSpent, questionObj.topic);
+
+    // Calculate average time so far for leaderboard ranking
+    const answeredCount = this.currentPlayer.answers.length;
+    const avgTime = answeredCount > 0 ? this.currentPlayer.totalTimeTaken / answeredCount : 0;
 
     // Send answer to DB immediately
     await this.db.submitQuestionAnswer(
@@ -234,7 +239,8 @@ export default class QuizManager {
         this.currentQuestionIndex, 
         isCorrect, 
         timeSpent,
-        points
+        points,
+        avgTime
     );
   }
 
@@ -267,22 +273,31 @@ export default class QuizManager {
       if (scores.length === 0) {
           listEl.innerHTML = '<p>No answers recorded.</p>';
       } else {
-          const myRankIndex = scores.findIndex(s => s.username === this.currentPlayer.username);
-          if (myRankIndex !== -1) {
-              const myData = scores[myRankIndex];
-              listEl.innerHTML = `
-                  <div class="personal-rank-board" style="text-align: center; margin-top: 2rem;">
-                     <h1 style="font-size: 5rem; color: hsl(var(--primary)); margin-bottom: 0;">#${myRankIndex + 1}</h1>
-                     <h3 style="color: hsl(var(--text-muted)); font-weight: normal;">Your Rank</h3>
-                     
-                     <div style="margin-top: 2rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-md);">
-                         <span style="font-size: 1.2rem;">Time Taken: <strong>${myData.timeSpent.toFixed(1)}s</strong></span>
-                     </div>
-                  </div>
+          const myUsername = this.currentPlayer.username;
+          let html = `
+              <div class="leaderboard-header">
+                <span style="min-width: 40px; text-align: center;">Rank</span>
+                <span style="flex: 1; margin-left: 0.75rem;">Name</span>
+                <span style="min-width: 50px; text-align: center;">Score</span>
+                <span style="min-width: 55px; text-align: right;">Avg Time</span>
+              </div>
+          `;
+          html += scores.map((s, i) => {
+              const isMe = s.username === myUsername;
+              const questionsAnswered = (this.currentQuestionIndex + 1) || 1;
+              const avgTime = s.avgTimeSoFar != null ? s.avgTimeSoFar : (s.timeSpent || 0);
+              return `
+              <div class="leaderboard-row${isMe ? ' highlight-me' : ''}">
+                <span class="rank">#${i + 1}</span>
+                <div class="player-info" style="flex: 1; margin-left: 1rem;">
+                    <strong>${s.username}${isMe ? ' (You)' : ''}</strong>
+                </div>
+                <span class="player-marks">${s.scoreSoFar}</span>
+                <span class="player-time">${avgTime.toFixed(1)}s</span>
+              </div>
               `;
-          } else {
-              listEl.innerHTML = '<p>You did not answer this question.</p>';
-          }
+          }).join('');
+          listEl.innerHTML = html;
       }
   }
 

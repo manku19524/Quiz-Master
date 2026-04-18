@@ -131,7 +131,7 @@ export default class FirestoreService {
     }
   }
 
-  async submitQuestionAnswer(quizId, player, questionId, isCorrect, timeSpent, pointsEarned) {
+  async submitQuestionAnswer(quizId, player, questionId, isCorrect, timeSpent, pointsEarned, avgTimeSoFar) {
       if (!this.isInitialized) return;
       try {
           const quizDocRef = await this.resolveQuizDocRef(quizId);
@@ -145,6 +145,7 @@ export default class FirestoreService {
               timeSpent: timeSpent,
               points: pointsEarned,
               scoreSoFar: player.score,
+              avgTimeSoFar: avgTimeSoFar || 0,
               timestamp: serverTimestamp()
           });
       } catch (error) {
@@ -167,7 +168,13 @@ export default class FirestoreService {
           const leaderboard = [];
           lbSnapshot.forEach(doc => leaderboard.push(doc.data()));
           
-          leaderboard.sort((a, b) => b.scoreSoFar - a.scoreSoFar);
+          // Sort by score (highest first), then by average time (lowest first)
+          leaderboard.sort((a, b) => {
+              if (b.scoreSoFar !== a.scoreSoFar) {
+                  return b.scoreSoFar - a.scoreSoFar;
+              }
+              return (a.avgTimeSoFar || 9999) - (b.avgTimeSoFar || 9999);
+          });
           
           return leaderboard;
       } catch(error) {
@@ -193,12 +200,14 @@ export default class FirestoreService {
         leaderboard.push(doc.data());
       });
       
+      // Sort by score (highest first), then by average time (lowest first)
       leaderboard.sort((a, b) => {
           if (b.score !== a.score) {
               return b.score - a.score;
-          } else {
-              return (a.time || 9999) - (b.time || 9999);
           }
+          const avgTimeA = (a.totalQuestions && a.totalQuestions > 0) ? (a.time || 0) / a.totalQuestions : 9999;
+          const avgTimeB = (b.totalQuestions && b.totalQuestions > 0) ? (b.time || 0) / b.totalQuestions : 9999;
+          return avgTimeA - avgTimeB;
       });
 
       return leaderboard;
