@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc, onSnapshot, query, where, orderBy, limit, serverTimestamp, collectionGroup } from "firebase/firestore";
 import { firebaseConfig } from "./firebase-config.js";
 
@@ -10,7 +10,8 @@ export default class FirestoreService {
 
     try {
       if (firebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
-        const app = initializeApp(firebaseConfig);
+        // Reuse existing Firebase app if already initialized, otherwise create new
+        const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
         this.db = getFirestore(app);
         this.isInitialized = true;
         console.log("Firebase Initialized Successfully");
@@ -283,6 +284,152 @@ export default class FirestoreService {
     } catch (error) {
         console.error("Error deleting all data:", error);
         return false;
+    }
+  }
+
+  // --- USER ACCOUNT FUNCTIONS ---
+
+  async createUser(username, password) {
+    if (!this.isInitialized) {
+      console.warn("Firebase not init. Cannot create user.");
+      return { success: false, error: "Database not available" };
+    }
+
+    try {
+      // Check if username already exists
+      const usersRef = collection(this.db, "users");
+      const q = query(usersRef, where("username", "==", username));
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        return { success: false, error: "Username already taken. Please choose another." };
+      }
+
+      await addDoc(collection(this.db, "users"), {
+        username: username,
+        password: password,
+        createdAt: serverTimestamp()
+      });
+
+      console.log("User created:", username);
+      return { success: true };
+    } catch (error) {
+      console.error("Error creating user:", error);
+      return { success: false, error: "Failed to create account. Please try again." };
+    }
+  }
+
+  async loginUser(username, password) {
+    if (!this.isInitialized) {
+      console.warn("Firebase not init. Cannot login.");
+      return { success: false, error: "Database not available" };
+    }
+
+    try {
+      const usersRef = collection(this.db, "users");
+      const q = query(usersRef, where("username", "==", username));
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        return { success: false, error: "Account not found. Please create an account first." };
+      }
+
+      const userData = snapshot.docs[0].data();
+      if (userData.password !== password) {
+        return { success: false, error: "Incorrect password." };
+      }
+
+      console.log("Login successful:", username);
+      return { success: true, user: { username: userData.username } };
+    } catch (error) {
+      console.error("Error logging in:", error);
+      return { success: false, error: "Login failed. Please try again." };
+    }
+  }
+
+  // --- SAVED QUIZ FUNCTIONS ---
+
+  async saveQuizDraft(username, quizData) {
+    if (!this.isInitialized) {
+      console.warn("Firebase not init. Cannot save quiz.");
+      return { success: false, error: "Database not available" };
+    }
+
+    try {
+      const docRef = await addDoc(collection(this.db, "savedQuizzes"), {
+        owner: username,
+        title: quizData.title,
+        password: quizData.password,
+        timeLimit: quizData.timeLimit,
+        questions: quizData.questions,
+        savedAt: serverTimestamp()
+      });
+
+      console.log("Quiz draft saved:", docRef.id);
+      return { success: true, docId: docRef.id };
+    } catch (error) {
+      console.error("Error saving quiz draft:", error);
+      return { success: false, error: "Failed to save quiz. Please try again." };
+    }
+  }
+
+  async getSavedQuizzes(username) {
+    if (!this.isInitialized) return [];
+
+    try {
+      const ref = collection(this.db, "savedQuizzes");
+      // Note: only using where() without orderBy() to avoid requiring a composite index
+      const q = query(ref, where("owner", "==", username));
+      const snapshot = await getDocs(q);
+
+      const quizzes = [];
+      snapshot.forEach(docSnap => {
+        quizzes.push({ id: docSnap.id, ...docSnap.data() });
+      });
+
+      // Sort client-side (newest first) to avoid needing a Firestore composite index
+      quizzes.sort((a, b) => {
+        const timeA = a.savedAt?.seconds || 0;
+        const timeB = b.savedAt?.seconds || 0;
+        return timeB - timeA;
+      });
+
+      return quizzes;
+    } catch (error) {
+      console.error("Error fetching saved quizzes:", error);
+      return [];
+    }
+  }
+
+  async deleteSavedQuiz(docId) {
+    if (!this.isInitialized) return false;
+
+    try {
+      await deleteDoc(doc(this.db, "savedQuizzes", docId));
+      console.log("Saved quiz deleted:", docId);
+      return true;
+    } catch (error) {
+      console.error("Error deleting saved quiz:", error);
+      return false;
+    }
+  }
+
+  async getSavedQuizById(docId) {
+    if (!this.isInitialized) return null;
+
+    try {
+      const ref = collection(this.db, "savedQuizzes");
+      const snapshot = await getDocs(ref);
+      let found = null;
+      snapshot.forEach(docSnap => {
+        if (docSnap.id === docId) {
+          found = { id: docSnap.id, ...docSnap.data() };
+        }
+      });
+      return found;
+    } catch (error) {
+      console.error("Error fetching saved quiz:", error);
+      return null;
     }
   }
 

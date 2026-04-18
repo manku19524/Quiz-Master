@@ -4,6 +4,7 @@ export default class HostManager {
   constructor() {
     this.db = new FirestoreService();
     this.questions = [];
+    this.currentUser = null; // Set by main.js on login
     
     // UI Elements
     this.views = {
@@ -37,6 +38,12 @@ export default class HostManager {
     this.addBtn.addEventListener('click', this.handleAddQuestion);
     this.form.addEventListener('submit', this.handleCreate);
     
+    // Save Quiz button
+    const saveBtn = document.getElementById('save-quiz-btn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => this.handleSave());
+    }
+
     // Add one empty question to start
     this.handleAddQuestion();
   }
@@ -80,13 +87,12 @@ export default class HostManager {
     this.questionsList.appendChild(div);
   }
 
-  async handleCreate(e) {
-    e.preventDefault();
-    
+  // Collects form data into a structured object
+  collectFormData() {
     const title = document.getElementById('new-quiz-title').value;
     const password = document.getElementById('new-quiz-pass').value;
-    const timerMinutes = document.getElementById('new-quiz-timer').value || "10";
-    
+    const timerSeconds = document.getElementById('new-quiz-timer').value || "10";
+
     // Parse Questions from DOM
     const questionItems = this.questionsList.querySelectorAll('.question-builder-item');
     const questionsData = [];
@@ -95,7 +101,7 @@ export default class HostManager {
       const qId = item.dataset.id;
       const text = item.querySelector(`[name="q_text_${qId}"]`).value;
       
-      // Fix: Structure options as objects to match Question.js expected format
+      // Structure options as objects to match Question.js expected format
       const options = [
         { id: "0", text: item.querySelector(`[name="q_opt0_${qId}"]`).value },
         { id: "1", text: item.querySelector(`[name="q_opt1_${qId}"]`).value },
@@ -109,13 +115,26 @@ export default class HostManager {
         id: index + 1,
         questionText: text,
         options: options,
-        correctAnswerHash: correctVal, // Matches option.id
+        correctAnswerHash: correctVal,
         topic: "General", 
         difficulty: "Medium"
       });
     });
 
-    if (questionsData.length === 0) {
+    return {
+      title,
+      password,
+      timeLimit: parseInt(timerSeconds) || 10,
+      questions: questionsData
+    };
+  }
+
+  async handleCreate(e) {
+    e.preventDefault();
+    
+    const formData = this.collectFormData();
+
+    if (formData.questions.length === 0) {
       alert("Please add at least one question.");
       return;
     }
@@ -124,10 +143,10 @@ export default class HostManager {
     
     const quizPayload = {
       quizId: quizId,
-      password: password,
-      title: title,
-      questions: questionsData,
-      timeLimit: parseInt(timerMinutes) || 10, // Now represents seconds per question
+      password: formData.password,
+      title: formData.title,
+      questions: formData.questions,
+      timeLimit: formData.timeLimit,
       status: 'OPEN',
       currentQuestionIndex: -1,
       questionStatus: 'WAITING'
@@ -136,10 +155,59 @@ export default class HostManager {
     const success = await this.db.createQuiz(quizPayload);
 
     if (success) {
-      this.showLobby(quizId, password);
+      this.showLobby(quizId, formData.password);
     } else {
       alert("Error creating quiz. Please try again.");
     }
+  }
+
+  async handleSave() {
+    const formData = this.collectFormData();
+
+    if (!formData.title) {
+      this.showToast('Please enter a quiz title.', 'error');
+      return;
+    }
+    if (formData.questions.length === 0) {
+      this.showToast('Please add at least one question.', 'error');
+      return;
+    }
+    if (!this.currentUser) {
+      this.showToast('You must be logged in to save quizzes.', 'error');
+      return;
+    }
+
+    const saveBtn = document.getElementById('save-quiz-btn');
+    saveBtn.textContent = '💾 Saving...';
+    saveBtn.disabled = true;
+
+    const result = await this.db.saveQuizDraft(this.currentUser, formData);
+
+    if (result.success) {
+      this.showToast('Quiz saved successfully! ✅');
+      // Reset form after save
+      this.form.reset();
+      this.questionsList.innerHTML = '';
+      this.handleAddQuestion();
+      // Navigate back to landing
+      document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+      document.getElementById('landing-view').classList.remove('hidden');
+    } else {
+      this.showToast(result.error || 'Failed to save quiz.', 'error');
+    }
+
+    saveBtn.textContent = '💾 Save Quiz';
+    saveBtn.disabled = false;
+  }
+
+  showToast(msg, type = 'success') {
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toast-message');
+    if (!toast || !toastMsg) return;
+    toastMsg.textContent = msg;
+    toast.className = 'toast ' + (type === 'error' ? 'toast-error' : 'toast-success');
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 3500);
   }
 
   generateQuizId() {
